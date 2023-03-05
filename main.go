@@ -1,7 +1,7 @@
 package main
 
 import (
-	"advancedSender/sender"
+	"github.com/Q-Wednesday/advancedSender/sender"
 	"net"
 	"time"
 )
