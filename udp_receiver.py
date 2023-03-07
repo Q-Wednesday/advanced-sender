@@ -8,6 +8,9 @@ s.bind(("127.0.0.1", 9876))
 byteCount=0
 samples=[]
 samplingTime = []
+speed = []
+recvStart = 0
+recvEnd = 0
 def sample():
     s=time.time()
     print(s)
@@ -16,15 +19,12 @@ def sample():
         samples.append(byteCount/1024/1024)
         samplingTime.append(time.time()-s)
 
-    recvStart = 0
-    recvEnd = 0
-
-    i = 1
-    while i < len(samples):
-        if samples[i] - samples[i-1] > 0:
-            recvStart = samplingTime[i-1]
-            break
-        i += 1
+    # i = 1
+    # while i < len(samples):
+    #     if samples[i] - samples[i-1] > 0:
+    #         recvStart = samplingTime[i-1]
+    #         break
+    #     i += 1
 
     i = len(samples) - 1
     while i > 0:
@@ -33,19 +33,33 @@ def sample():
             break
         i -= 1
 
-    duration = recvEnd - recvStart
+    # calculate the receiving speed between two sampling points
+    speed.append(0)
+    i = 1
+    while i < len(samples):
+        speed.append((samples[i]-samples[i-1])/(samplingTime[i]-samplingTime[i-1]))
+        i += 1
+
+    duration = recvEnd - (recvStart - s)
     # print(samples)
     print("byteCount:", byteCount)
     # print("Start:", recvStart)
     # print("End:", recvEnd)
     print("Duration:", duration)
     print("Speed:", byteCount/1024/1024/duration)
+    plt.subplot(121)
     plt.plot(samplingTime, samples)
+    # plt.show()
+    plt.subplot(122)
+    plt.plot(samplingTime, speed)
     plt.show()
 
 
 if __name__== '__main__':
     _thread.start_new_thread(sample,())
+    data, addr = s.recvfrom(2048)
+    recvStart = time.time()
+    byteCount+=len(data)
     while True:
         data, addr = s.recvfrom(2048)
         byteCount+=len(data)
