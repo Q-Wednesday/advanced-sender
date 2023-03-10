@@ -1,11 +1,11 @@
 
 import socket
 import time
-import _thread
+import threading
 import matplotlib.pyplot as plt
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind(("127.0.0.1", 9876))
-byteCount=0
+byteCount = 0
 samples=[]
 samplingTime = []
 speed = []
@@ -57,22 +57,33 @@ def sample():
 
 def checker():
     lastByteCount = byteCount
+    print("Start checking")
     while byteCount == 0 or lastByteCount != byteCount:
         lastByteCount = byteCount
         time.sleep(0.01)
 
-# def receiver():
-
-
-
-if __name__== '__main__':
-    # _thread.start_new_thread(sample,())
-    _thread.start_new_thread(checker, ())
+def receiver():
     while True:
         data, addr = s.recvfrom(2048)
         if recvStart == 0:
             recvStart = time.time()
             print("Start receiving:", recvStart)
         recvTime = time.time() - recvStart
-        byteCount+=len(data)
+        byteCount += len(data)
+
+
+if __name__== '__main__':
+    # _thread.start_new_thread(sample,())
+    Checker = threading.Thread(target = checker)
+    Receiver = threading.Thread(target = receiver)
+    # _thread.start_new_thread(checker, ())
+    # _thread.start_new_thread(receiver, ())
+    Checker.start()
+    Receiver.start()
+    Checker.join()
+    Receiver.interrupt()
+    print("receiver is interrupted?", receiver.is_interrupted())
+    print("Receive end:", time.time())
+    print("Receive duration:", recvTime)
+
 
