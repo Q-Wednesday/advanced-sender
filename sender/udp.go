@@ -24,10 +24,11 @@ type UDPSender struct {
 	stopped   bool
 	speed     int //Mbps
 	startTime int64
+	stopSem   chan struct{}
 }
 
 func NewUDPSender(addr *net.UDPAddr) *UDPSender {
-	conn, err := net.DialUDP("udp", nil, addr)
+	conn, err := net.ListenUDP("udp", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -37,25 +38,31 @@ func NewUDPSender(addr *net.UDPAddr) *UDPSender {
 		byteCount: 0,
 		stopped:   false,
 		speed:     100,
+		stopSem:   make(chan struct{}),
 	}
 }
 func (s *UDPSender) Send() {
 	s.startTime = time.Now().UnixMilli()
-	for !s.stopped {
-		delta := time.Now().UnixMilli() - s.startTime
-		if int(delta)*s.speed*1024*1024/8/1000 > s.byteCount {
-			sz, err := s.Write(rawData)
-			if err != nil {
-				panic(err)
+	for {
+		select {
+		case <-s.stopSem:
+			duration := float64(time.Now().UnixMilli()-s.startTime) / 1000
+			fmt.Printf("byte count:%v, duration:%v s\n", s.byteCount, duration)
+			fmt.Printf("average speed: %v MB/s", float64(s.byteCount)/1024/1024/duration)
+			return
+		default:
+			delta := time.Now().UnixMilli() - s.startTime
+			if int(delta)*s.speed*1024*1024/8/1000 > s.byteCount {
+				sz, err := s.WriteToUDP(rawData, s.addr)
+				if err != nil {
+					panic(err)
+				}
+				s.byteCount += sz
 			}
-			s.byteCount += sz
 		}
 	}
-	duration := float64(time.Now().UnixMilli()-s.startTime) / 1000
-	fmt.Printf("byte count:%v, duration:%v s\n", s.byteCount, duration)
-	fmt.Printf("average speed: %v MB/s", float64(s.byteCount)/1024/1024/duration)
 }
 
 func (s *UDPSender) Stop() {
-	s.stopped = true
+	s.stopSem <- struct{}{}
 }
