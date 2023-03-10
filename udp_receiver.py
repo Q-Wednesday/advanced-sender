@@ -11,6 +11,7 @@ samplingTime = []
 speed = []
 recvStart = 0
 recvEnd = 0
+recvTime = 0
 def sample():
     s=time.time()
     print(s)
@@ -54,13 +55,24 @@ def sample():
     plt.plot(samplingTime, speed)
     plt.show()
 
+def checker():
+    lastByteCount = byteCount
+    while byteCount == 0 or lastByteCount != byteCount:
+        lastByteCount = byteCount
+        time.sleep(0.01)
+
+# def receiver():
+
+
 
 if __name__== '__main__':
-    _thread.start_new_thread(sample,())
-    data, addr = s.recvfrom(2048)
-    recvStart = time.time()
-    byteCount+=len(data)
+    # _thread.start_new_thread(sample,())
+    _thread.start_new_thread(checker, ())
     while True:
         data, addr = s.recvfrom(2048)
+        if recvStart == 0:
+            recvStart = time.time()
+            print("Start receiving:", recvStart)
+        recvTime = time.time() - recvStart
         byteCount+=len(data)
 
