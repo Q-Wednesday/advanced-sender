@@ -4,18 +4,22 @@ import threading
 import time
 import _thread
 
+start_time=time.time()
+server_address="183.173.251.80"
 tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-tcp_sock.connect(("127.0.0.1", 8000))
+tcp_sock.connect((server_address, 8000))
 
 key = str(time.time())
 
 tcp_sock.send(key.encode("utf-8"))
 
-udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-udp_sock.settimeout(0.1)
-udp_sock.sendto(key.encode("utf-8"), ("127.0.0.1", 9876))
+time.sleep(0.1)
 
-send_speed = 200
+udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+udp_sock.settimeout(0.5)
+udp_sock.sendto(key.encode("utf-8"), (server_address, 9876))
+tcp_sock.recv(1024)
+send_speed = 100
 
 
 class Receiver(threading.Thread):
@@ -49,20 +53,32 @@ def check(receiver: Receiver):
             #receiver.conn.close()
             return
         old_count = receiver.byte_count
-        time.sleep(0.02)
+        time.sleep(0.05)
 
+duration="100"
 while True:
-
+    message=str(send_speed)+","+duration
+    tcp_sock.send(message.encode("utf-8"))
     receiver = Receiver(udp_sock)
     receiver.start()
     check(receiver)
     receiver.join()
     print(receiver.byte_count, receiver.start_time, receiver.end_time)
+    server_send=tcp_sock.recv(1024)
+    print(str(server_send))
     cost=receiver.end_time - receiver.start_time
-    print(cost)
+    print("time cost:",cost)
+    rate_of_receive= receiver.byte_count / int(server_send)
+    print("receive/send",rate_of_receive)
+    if rate_of_receive<0.8 or rate_of_receive>1:
+        time.sleep(cost)
+        continue
     if cost>0.13:
         tcp_sock.send(b"END")
-        print(send_speed*0.1/cost)
+        print(send_speed*int(duration)/1000/cost)
         break
+
     send_speed=send_speed*2
-    tcp_sock.send(str(send_speed).encode("utf-8"))
+    time.sleep(int(duration)/1000)
+
+print(time.time()-start_time)
