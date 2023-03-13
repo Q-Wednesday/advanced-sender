@@ -1,1 +1,1 @@
-module github.com/Q-Wednesday/advancedSender
+module github.com/Q-Wednesday/advanced-sender
