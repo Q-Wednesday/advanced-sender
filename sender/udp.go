@@ -42,6 +42,10 @@ func NewUDPSender(addr *net.UDPAddr) *UDPSender {
 	}
 }
 
+func (u *UDPSender) ByteCount() int {
+	return u.byteCount
+}
+
 // SendWithSpeed send UDP in a constant speed
 func (s *UDPSender) SendWithSpeed(speed int) {
 	startTime := time.Now().UnixMilli()
@@ -49,6 +53,7 @@ func (s *UDPSender) SendWithSpeed(speed int) {
 	var duration int64
 	// output in the end
 	defer func() {
+		s.byteCount = byteCount
 		durationMinutes := float64(duration) / 1000
 		fmt.Printf("byte count:%v, duration:%v s\n", byteCount, durationMinutes)
 		fmt.Printf("average speed: %v MB/s\n", float64(byteCount)/1024/1024/durationMinutes)
@@ -63,7 +68,8 @@ func (s *UDPSender) SendWithSpeed(speed int) {
 			if int(duration)*speed*1024*1024/8/1000 > byteCount {
 				sz, err := s.WriteToUDP(rawData, s.addr)
 				if err != nil {
-					panic(err)
+					fmt.Println(err)
+					return
 				}
 				byteCount += sz
 			}
