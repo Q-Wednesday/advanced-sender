@@ -1,8 +1,8 @@
 package receiver
 
 import (
-	"advancedSender/sender"
 	"fmt"
+	"github.com/Q-Wednesday/advancedSender/sender"
 	"net"
 )
 
