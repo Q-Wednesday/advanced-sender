@@ -77,11 +77,15 @@ func (p *PacketTrainSender) Serve() {
 }
 
 type UDPDispatcher struct {
-	senders map[string]*PacketTrainSender
+	activeSenders  map[string]*PacketTrainSender
+	pendingSenders map[string]*PacketTrainSender
 }
 
 func NewUDPDispatcher() *UDPDispatcher {
-	return &UDPDispatcher{senders: map[string]*PacketTrainSender{}}
+	return &UDPDispatcher{
+		activeSenders:  map[string]*PacketTrainSender{},
+		pendingSenders: map[string]*PacketTrainSender{},
+	}
 }
 func (u *UDPDispatcher) Dispatch(udpAddr *net.UDPAddr) {
 	listen, err := net.ListenUDP("udp", udpAddr)
@@ -98,20 +102,22 @@ func (u *UDPDispatcher) Dispatch(udpAddr *net.UDPAddr) {
 		}
 		key := string(buffer[:n])
 		fmt.Printf("key:%v addr:%v count%v\n", key, addr, n)
-		if sender, ok := u.senders[key]; ok {
+		if sender, ok := u.pendingSenders[key]; ok {
 			sender.Connect(addr)
+			delete(u.pendingSenders, key)
+			u.activeSenders[key] = sender
 			go func() {
 				sender.Serve()
-				delete(u.senders, key)
+				delete(u.activeSenders, key)
 				fmt.Printf("end serving %v\n", key)
 			}()
 		} else {
-			fmt.Printf("cannot find key %v\n", key)
+			fmt.Printf("cannot find key %v\n in pending servers", key)
 		}
 	}
 }
 func (u *UDPDispatcher) AddSender(key string, conn *net.TCPConn) {
-	u.senders[key] = NewPacketTrainSender(conn)
+	u.pendingSenders[key] = NewPacketTrainSender(conn)
 }
 
 type PacketTrainServer struct {

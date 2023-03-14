@@ -23,10 +23,10 @@ func main() {
 	s := &sender.PacketTrainServer{}
 	s.Listen(&net.TCPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),
-		Port: 8000,
+		Port: 9878,
 	}, &net.UDPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),
-		Port: 9876,
+		Port: 9877,
 	})
 	s.Run()
 }
