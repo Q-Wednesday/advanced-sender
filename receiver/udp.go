@@ -2,7 +2,7 @@ package receiver
 
 import (
 	"fmt"
-	"github.com/Q-Wednesday/advancedSender/sender"
+	"github.com/Q-Wednesday/advanced-sender/sender"
 	"net"
 )
 
