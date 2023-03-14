@@ -28,7 +28,10 @@ type UDPSender struct {
 }
 
 func NewUDPSender(addr *net.UDPAddr) *UDPSender {
-	conn, err := net.ListenUDP("udp", nil)
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{
+		IP:   net.IPv4(0, 0, 0, 0),
+		Port: 9877,
+	})
 	if err != nil {
 		panic(err)
 	}
