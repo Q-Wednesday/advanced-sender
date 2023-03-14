@@ -5,7 +5,7 @@ import time
 import _thread
 
 start_time=time.time()
-server_address="81.70.55.189"
+server_address="127.0.0.1"
 tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 tcp_sock.connect((server_address, 9878))
 
