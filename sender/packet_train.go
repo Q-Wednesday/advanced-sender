@@ -25,8 +25,8 @@ func NewPacketTrainSender(conn *net.TCPConn) *PacketTrainSender {
 }
 
 // Connect try to connect to client
-func (p *PacketTrainSender) Connect(addr *net.UDPAddr) error {
-	p.sender = NewUDPSender(addr)
+func (p *PacketTrainSender) Connect(conn *net.UDPConn, addr *net.UDPAddr) error {
+	p.sender = NewUDPSenderWithConn(conn, addr)
 	_, err := p.cli.Write([]byte("ACK"))
 	fmt.Println("Connected")
 	return err
@@ -103,7 +103,7 @@ func (u *UDPDispatcher) Dispatch(udpAddr *net.UDPAddr) {
 		key := string(buffer[:n])
 		fmt.Printf("key:%v addr:%v count%v\n", key, addr, n)
 		if sender, ok := u.pendingSenders[key]; ok {
-			sender.Connect(addr)
+			sender.Connect(listen, addr)
 			delete(u.pendingSenders, key)
 			u.activeSenders[key] = sender
 			go func() {

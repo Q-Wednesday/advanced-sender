@@ -19,7 +19,7 @@ udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp_sock.settimeout(0.5)
 udp_sock.sendto(key.encode("utf-8"), (server_address, 9877))
 tcp_sock.recv(1024)
-send_speed = 100
+send_speed = 50
 
 
 class Receiver(threading.Thread):

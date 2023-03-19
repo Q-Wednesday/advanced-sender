@@ -27,8 +27,22 @@ type UDPSender struct {
 	stopSem   chan struct{} // send to this chan to stop sending
 }
 
+func NewUDPSenderWithConn(conn *net.UDPConn, addr *net.UDPAddr) *UDPSender {
+	return &UDPSender{
+		UDPConn:   *conn,
+		addr:      addr,
+		byteCount: 0,
+		stopped:   false,
+		speed:     100,
+		stopSem:   make(chan struct{}),
+	}
+
+}
 func NewUDPSender(addr *net.UDPAddr) *UDPSender {
-	conn, err := net.ListenUDP("udp", nil)
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{
+		IP:   net.IPv4(0, 0, 0, 0),
+		Port: 9877,
+	})
 	if err != nil {
 		panic(err)
 	}
