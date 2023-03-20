@@ -8,8 +8,8 @@ from packet_train_client import  PacketTrainClient
 
 columns=[]
 for speed in ['100','200','400']:
-    for item in ['recv','duration','speed']:
-        for num in ['1','2','3']:
+    for num in ['1','2','3']:
+        for item in ['recv','duration','speed']:
             columns.append("{}_{}_{}".format(speed,item,num))
 
 columns.append('speed_test')
