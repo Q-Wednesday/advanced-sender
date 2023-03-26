@@ -147,5 +147,5 @@ def test_speed():
 
 
 if __name__ == '__main__':
-    client = PacketTrainClient('183.173.250.141')
+    client = PacketTrainClient('183.172.64.101')
     print(client.test_speed())
