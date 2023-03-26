@@ -52,3 +52,12 @@ def specified_period(timestamps, duration):
     ts_min = np.min(ts)
     idx = np.where(ts < ts_min + duration)
     return ts[idx]
+
+
+def max_gap(arr):
+    arr = np.array(arr)
+    # 计算相邻元素之间的差值
+    diff = np.diff(arr)
+
+    # 返回差值中的最大值
+    return np.max(diff)
