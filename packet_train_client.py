@@ -49,8 +49,7 @@ class PacketTrainClient:
         self.send_speed = 100
         self.duration = 100
 
-    def test_speed(self):
-        self.start_time = time.time()
+    def connect(self):
         self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.tcp_sock.connect((self.server_address, self.tcp_port))
         self.key = str(time.time())
@@ -61,6 +60,14 @@ class PacketTrainClient:
         self.udp_sock.sendto(self.key.encode('utf-8'), (self.server_address, self.udp_port))
         resp = self.tcp_sock.recv(1024)
         print("server response: {}".format(str(resp)))
+
+    def test_once_with_speed(self, speed):
+        self.send_speed = speed
+        self.test_once()
+
+    def test_speed(self):
+        self.start_time = time.time()
+        self.connect()
         result = {100: [], 200: [], 400: []}
         # 每种速度都测三次，不管丢包什么的
         while self.send_speed <= 400:
@@ -138,6 +145,7 @@ def test_speed():
 
     print(time.time() - start_time)
 
-if __name__=='__main__':
-    client=PacketTrainClient('81.70.55.189')
+
+if __name__ == '__main__':
+    client = PacketTrainClient('183.173.250.141')
     print(client.test_speed())
