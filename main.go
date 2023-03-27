@@ -20,7 +20,7 @@ func testUDPSender() {
 }
 
 func main() {
-	s := sender.NewPacketTrainServer(sender.PacketTrainSenderOption{PacketSize: 2048})
+	s := sender.NewPacketTrainServer(sender.PacketTrainSenderOption{PacketSize: 4096})
 	s.Listen(&net.TCPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),
 		Port: 9878,
