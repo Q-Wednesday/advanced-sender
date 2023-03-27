@@ -13,20 +13,29 @@ type PacketTrainSender struct {
 	cli          *net.TCPConn // used for communication
 	sendSpeed    int
 	sendDuration time.Duration
+	packetSize   int
+}
+type PacketTrainSenderOption struct {
+	PacketSize int
 }
 
-func NewPacketTrainSender(conn *net.TCPConn) *PacketTrainSender {
-	return &PacketTrainSender{
+func NewPacketTrainSender(conn *net.TCPConn, option ...PacketTrainSenderOption) *PacketTrainSender {
+	sender := &PacketTrainSender{
 		sender:       nil,
 		cli:          conn,
 		sendSpeed:    200,
 		sendDuration: time.Millisecond * 100,
+		packetSize:   BufferSize,
 	}
+	if len(option) > 0 {
+		sender.packetSize = option[0].PacketSize
+	}
+	return sender
 }
 
 // Connect try to connect to client
 func (p *PacketTrainSender) Connect(conn *net.UDPConn, addr *net.UDPAddr) error {
-	p.sender = NewUDPSenderWithConn(conn, addr)
+	p.sender = NewUDPSenderWithConn(conn, addr, UDPSenderOption{PacketSize: p.packetSize})
 	_, err := p.cli.Write([]byte("ACK"))
 	fmt.Println("Connected")
 	return err
@@ -116,16 +125,20 @@ func (u *UDPDispatcher) Dispatch(udpAddr *net.UDPAddr) {
 		}
 	}
 }
-func (u *UDPDispatcher) AddSender(key string, conn *net.TCPConn) {
-	u.pendingSenders[key] = NewPacketTrainSender(conn)
+func (u *UDPDispatcher) AddSender(key string, conn *net.TCPConn, option ...PacketTrainSenderOption) {
+	u.pendingSenders[key] = NewPacketTrainSender(conn, option...)
 }
 
 type PacketTrainServer struct {
-	tcpAddr    *net.TCPAddr
-	udpAddr    *net.UDPAddr
-	dispatcher *UDPDispatcher
+	tcpAddr      *net.TCPAddr
+	udpAddr      *net.UDPAddr
+	dispatcher   *UDPDispatcher
+	senderOption []PacketTrainSenderOption
 }
 
+func NewPacketTrainServer(option ...PacketTrainSenderOption) *PacketTrainServer {
+	return &PacketTrainServer{senderOption: option}
+}
 func (p *PacketTrainServer) Listen(tcpAddr *net.TCPAddr, udpAddr *net.UDPAddr) {
 	p.tcpAddr = tcpAddr
 	p.udpAddr = udpAddr
@@ -152,6 +165,6 @@ func (p *PacketTrainServer) Run() {
 			continue
 		}
 		key := string(buffer[:sz])
-		p.dispatcher.AddSender(key, tcpConn)
+		p.dispatcher.AddSender(key, tcpConn, p.senderOption...)
 	}
 }
