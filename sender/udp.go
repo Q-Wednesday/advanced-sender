@@ -25,17 +25,30 @@ type UDPSender struct {
 	speed     int  //Mbps
 	startTime int64
 	stopSem   chan struct{} // send to this chan to stop sending
+	rawData   []byte
 }
 
-func NewUDPSenderWithConn(conn *net.UDPConn, addr *net.UDPAddr) *UDPSender {
-	return &UDPSender{
+type UDPSenderOption struct {
+	PacketSize int
+}
+
+func NewUDPSenderWithConn(conn *net.UDPConn, addr *net.UDPAddr, option ...UDPSenderOption) *UDPSender {
+	sender := &UDPSender{
 		UDPConn:   *conn,
 		addr:      addr,
 		byteCount: 0,
 		stopped:   false,
 		speed:     100,
 		stopSem:   make(chan struct{}),
+		rawData:   rawData,
 	}
+	if len(option) > 0 {
+		sender.rawData = make([]byte, option[0].PacketSize)
+		for i := 0; i < len(sender.rawData); i++ {
+			sender.rawData[i] = 'A'
+		}
+	}
+	return sender
 
 }
 func NewUDPSender(addr *net.UDPAddr) *UDPSender {
@@ -80,7 +93,7 @@ func (s *UDPSender) SendWithSpeed(speed int) {
 		default:
 			duration = time.Now().UnixMilli() - startTime
 			if int(duration)*speed*1024*1024/8/1000 > byteCount {
-				sz, err := s.WriteToUDP(rawData, s.addr)
+				sz, err := s.WriteToUDP(s.rawData, s.addr)
 				if err != nil {
 					fmt.Println(err)
 					return
