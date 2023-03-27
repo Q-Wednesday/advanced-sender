@@ -67,7 +67,7 @@ func (p *PacketTrainSender) Serve() {
 			}
 			p.sendDuration = time.Duration(duration) * time.Millisecond
 		}
-		p.sender.SendWithSpeedAndTime(p.sendSpeed, p.sendDuration)
+		//p.sender.SendWithSpeedAndTime(p.sendSpeed, p.sendDuration)
 		_, err = p.cli.Write([]byte(strconv.Itoa(p.sender.ByteCount())))
 		if err != nil {
 			fmt.Println(err)

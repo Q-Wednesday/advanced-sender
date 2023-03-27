@@ -19,8 +19,10 @@ def sample():
 
 
 if __name__== '__main__':
-    _thread.start_new_thread(sample,())
+    # _thread.start_new_thread(sample,())
     while True:
+        print(time.time())
         data, addr = s.recvfrom(2048)
+        print(data)
         byteCount+=len(data)
 
