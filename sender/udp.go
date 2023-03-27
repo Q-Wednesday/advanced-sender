@@ -27,7 +27,7 @@ type UDPSender struct {
 	addr      *net.UDPAddr
 	byteCount int
 	stopped   bool // may be deprecated
-	interval  int  //ms
+	interval  int64  //ms
 	startTime int64
 	stopSem   chan struct{} // send to this chan to stop sending
 }
@@ -66,20 +66,21 @@ func (u *UDPSender) ByteCount() int {
 }
 
 // SendWithInterval send a pair of UDP packets
-func (s *UDPSender) SendWithInterval(interval int) {
-	startTime := time.Now().UnixMilli()
-	endTime := time.Now().UnixMilli()
+func (s *UDPSender) SendWithInterval(interval int64) {
+	sendTimeA := time.Now().UnixMilli()
+	sendTimeB := time.Now().UnixMilli()
 	byteCountA := 0
 	byteCountB := 0
 	// output in the end
 	defer func() {
-		fmt.Printf("Startat:%v\n", startTime)
-		fmt.Printf("byte count A:%v, byte count B:%v s\n", byteCountA, byteCountB)
-		fmt.Printf("invertal: %v ms\n", interval)
-		fmt.Printf("Endat:%v\n", endTime)
-		fmt.Printf("Duration:%v", endTime - startTime)
+		fmt.Printf("Send A:%v\n", sendTimeA)
+		fmt.Printf("Send B:%v\n", sendTimeB)
+		fmt.Printf("byte count A:%v, byte count B:%v \n", byteCountA, byteCountB)
+		fmt.Printf("invertal:%v ms\n", interval)
+		fmt.Printf("Duration:%v ms\n", sendTimeB - sendTimeA)
 	}()
 
+	sendTimeA = time.Now().UnixMilli()
 	szA, err := s.WriteToUDP(rawDataA, s.addr)
 	if err != nil {
 		fmt.Println(err)
@@ -87,18 +88,19 @@ func (s *UDPSender) SendWithInterval(interval int) {
 	}
 	byteCountA = szA
 
-	time.Sleep(time.Duration(interval)*time.Millisecond)
-
-	szB, err := s.WriteToUDP(rawDataB, s.addr)
-	if err != nil {
-		fmt.Println(err)
-		return
+	for {
+		if (time.Now().UnixMilli() - sendTimeA >= interval) {
+			sendTimeB = time.Now().UnixMilli()
+			szB, err := s.WriteToUDP(rawDataB, s.addr)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			byteCountB = szB
+			return
+		}
 	}
-	byteCountB = szB
 
-	endTime = time.Now().UnixMilli()
-
-	return
 
 	//for {
 	//	select {
