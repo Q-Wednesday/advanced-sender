@@ -59,6 +59,9 @@ func (p *PacketTrainSender) Serve() {
 		messages := string(buffer[:sz])
 		messageList := strings.Split(messages, ";")
 		for _, message := range messageList {
+			if len(message) == 0 {
+				continue
+			}
 			if p.handle(message) {
 				return
 			}
@@ -140,8 +143,6 @@ func (u *UDPDispatcher) Dispatch(udpAddr *net.UDPAddr) {
 				delete(u.activeSenders, key)
 				fmt.Printf("end serving %v\n", key)
 			}()
-		} else {
-			fmt.Printf("cannot find key %v\n in pending servers", key)
 		}
 	}
 }
