@@ -47,7 +47,7 @@ class PacketTrainClient:
         self.tcp_sock = None
         self.udp_sock = None
         self.send_speed = 100
-        self.duration = 100
+        self.duration = 1000
 
     def connect(self):
         self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -117,7 +117,7 @@ def test_speed():
     udp_sock.sendto(key.encode("utf-8"), (server_address, 9877))
     tcp_sock.recv(1024)
     send_speed = 100
-    duration = "100"
+    duration = "1000"
     while True:
         message = str(send_speed) + "," + duration
         tcp_sock.send(message.encode("utf-8"))
@@ -147,5 +147,8 @@ def test_speed():
 
 
 if __name__ == '__main__':
-    client = PacketTrainClient('183.172.64.101')
-    print(client.test_speed())
+    client = PacketTrainClient('81.70.55.189')
+    client.connect()
+    client.test_once_with_speed(200)
+    #print(client.test_speed())
+    # 192.168.1.156
