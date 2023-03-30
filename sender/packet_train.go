@@ -56,46 +56,53 @@ func (p *PacketTrainSender) Serve() {
 			fmt.Println(err)
 			return
 		}
-		message := string(buffer[:sz])
-		fmt.Printf("message: %v\n", message)
-		switch message {
-		case "END":
-			return
-		case "STOP":
-			// stop this time
-			p.sender.Stop()
-			continue
-		case "USAGE":
-			usage := p.sender.ByteCount()
-			_, err := p.cli.Write([]byte(fmt.Sprintf("USAGE:%d", usage)))
-			if err != nil {
-				fmt.Println(err)
-			}
-			continue
-		default:
-			options := strings.Split(message, ",")
-			speed, err := strconv.Atoi(options[0])
-			if err != nil {
-				fmt.Println(err)
+		messages := string(buffer[:sz])
+		messageList := strings.Split(messages, ";")
+		for _, message := range messageList {
+			if p.handle(message) {
 				return
 			}
-			p.sendSpeed = speed
-			duration, err := strconv.Atoi(options[1])
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			p.sendDuration = time.Duration(duration) * time.Millisecond
-			go func() {
-				byteCount := p.sender.SendWithSpeedAndTime(p.sendSpeed, p.sendDuration)
-				_, err = p.cli.Write([]byte(strconv.Itoa(byteCount)))
-				if err != nil {
-					fmt.Println(err)
-				}
-			}()
 		}
 
 	}
+}
+
+// handle return true if end
+func (p *PacketTrainSender) handle(message string) bool {
+	fmt.Printf("message: %v\n", message)
+	switch message {
+	case "END":
+		return true
+	case "STOP":
+		// stop this time
+		p.sender.Stop()
+	case "USAGE":
+		usage := p.sender.ByteCount()
+		_, err := p.cli.Write([]byte(fmt.Sprintf("USAGE:%d", usage)))
+		if err != nil {
+			fmt.Println(err)
+		}
+	default:
+		options := strings.Split(message, ",")
+		speed, err := strconv.Atoi(options[0])
+		if err != nil {
+			fmt.Println(err)
+		}
+		p.sendSpeed = speed
+		duration, err := strconv.Atoi(options[1])
+		if err != nil {
+			fmt.Println(err)
+		}
+		p.sendDuration = time.Duration(duration) * time.Millisecond
+		go func() {
+			p.sender.SendWithSpeedAndTime(p.sendSpeed, p.sendDuration)
+			//_, err = p.cli.Write([]byte(strconv.Itoa(byteCount)))
+			//if err != nil {
+			//	fmt.Println(err)
+			//}
+		}()
+	}
+	return false
 }
 
 type UDPDispatcher struct {

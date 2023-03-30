@@ -74,10 +74,10 @@ class PacketTrainClient:
         while self.send_speed <= 400:
             for i in range(3):
                 byte_count, time_cost = self.test_once()
-                server_send = self.tcp_sock.recv(1024)
+                #server_send = self.tcp_sock.recv(1024)
                 print("byte_count:",byte_count)
-                print("server_send:",str(server_send))
-                result[self.send_speed].append((time_cost, byte_count / int(server_send)))
+                #print("server_send:",str(server_send))
+                #result[self.send_speed].append((time_cost, byte_count / int(server_send)))
                 time.sleep(time_cost)
             self.send_speed = self.send_speed * 2
         self.tcp_sock.send(b"END")
@@ -101,17 +101,17 @@ class PacketTrainClient:
         self.receiver.join()
         return self.receiver.byte_count, self.receiver.end_time - self.receiver.start_time
     def continue_send(self):
-        message = "{},{}".format(self.send_speed, 5000)
+        message = "{},{};".format(self.send_speed, 5000)
         self.receiver = Receiver(self.udp_sock)
         self.receiver.start()
         self.tcp_sock.send(message.encode('utf-8'))
     def stop_send(self):
-        message="STOP"
+        message="STOP;"
         self.tcp_sock.send(message.encode('utf-8'))
         self.receiver.join()
         print("receive:",self.receiver.byte_count)
     def get_usage(self):
-        self.tcp_sock.send("USAGE".encode('utf-8'))
+        self.tcp_sock.send("USAGE;".encode('utf-8'))
         while True:
             massage = self.tcp_sock.recv(1024)
             massage=massage.decode('utf-8')
@@ -172,4 +172,4 @@ if __name__ == '__main__':
     # client.continue_send()
     # time.sleep(3)
     # client.stop_send()
-    print(client.get_usage())
+    #print(client.get_usage())
