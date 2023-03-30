@@ -18,6 +18,7 @@ class Receiver(threading.Thread):
         try:
             while not self.stopped:
                 r = self.conn.recv(1024)
+
                 if self.start_time is None:
                     self.start_time = time.time()
                 self.end_time = time.time()
@@ -74,6 +75,8 @@ class PacketTrainClient:
             for i in range(3):
                 byte_count, time_cost = self.test_once()
                 server_send = self.tcp_sock.recv(1024)
+                print("byte_count:",byte_count)
+                print("server_send:",str(server_send))
                 result[self.send_speed].append((time_cost, byte_count / int(server_send)))
                 time.sleep(time_cost)
             self.send_speed = self.send_speed * 2
@@ -90,15 +93,31 @@ class PacketTrainClient:
         # except Exception:
         #     pass
         # print('clear done')
-        receiver = Receiver(self.udp_sock)
-        receiver.start()
+        self.receiver = Receiver(self.udp_sock)
+        self.receiver.start()
         self.tcp_sock.send(message.encode('utf-8'))
 
-        check(receiver)
-        receiver.join()
-        return receiver.byte_count, receiver.end_time - receiver.start_time
-
-
+        check(self.receiver)
+        self.receiver.join()
+        return self.receiver.byte_count, self.receiver.end_time - self.receiver.start_time
+    def continue_send(self):
+        message = "{},{}".format(self.send_speed, 5000)
+        self.receiver = Receiver(self.udp_sock)
+        self.receiver.start()
+        self.tcp_sock.send(message.encode('utf-8'))
+    def stop_send(self):
+        message="STOP"
+        self.tcp_sock.send(message.encode('utf-8'))
+        self.receiver.join()
+        print("receive:",self.receiver.byte_count)
+    def get_usage(self):
+        self.tcp_sock.send("USAGE".encode('utf-8'))
+        while True:
+            massage = self.tcp_sock.recv(1024)
+            massage=massage.decode('utf-8')
+            print("message:",massage)
+            if massage.startswith("USAGE:"):
+                return int(massage[6:])
 # old method
 def test_speed():
     start_time = time.time()
@@ -147,5 +166,10 @@ def test_speed():
 
 
 if __name__ == '__main__':
-    client = PacketTrainClient('183.172.64.101')
+    client = PacketTrainClient('127.0.0.1')
     print(client.test_speed())
+    # client.connect()
+    # client.continue_send()
+    # time.sleep(3)
+    # client.stop_send()
+    print(client.get_usage())

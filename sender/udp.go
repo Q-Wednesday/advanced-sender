@@ -69,18 +69,18 @@ func NewUDPSender(addr *net.UDPAddr) *UDPSender {
 	}
 }
 
-func (u *UDPSender) ByteCount() int {
-	return u.byteCount
+func (s *UDPSender) ByteCount() int {
+	return s.byteCount
 }
 
 // SendWithSpeed send UDP in a constant speed
-func (s *UDPSender) SendWithSpeed(speed int) {
+func (s *UDPSender) SendWithSpeed(speed int) int {
 	startTime := time.Now().UnixMilli()
 	byteCount := 0
 	var duration int64
 	// output in the end
 	defer func() {
-		s.byteCount = byteCount
+		s.byteCount += byteCount
 		durationMinutes := float64(duration) / 1000
 		fmt.Printf("byte count:%v, duration:%v s\n", byteCount, durationMinutes)
 		fmt.Printf("average speed: %v MB/s\n", float64(byteCount)/1024/1024/durationMinutes)
@@ -89,14 +89,14 @@ func (s *UDPSender) SendWithSpeed(speed int) {
 	for {
 		select {
 		case <-s.stopSem:
-			return
+			return byteCount
 		default:
 			duration = time.Now().UnixMilli() - startTime
 			if int(duration)*speed*1024*1024/8/1000 > byteCount {
 				sz, err := s.WriteToUDP(s.rawData, s.addr)
 				if err != nil {
 					fmt.Println(err)
-					return
+					return byteCount
 				}
 				byteCount += sz
 			}
@@ -104,12 +104,37 @@ func (s *UDPSender) SendWithSpeed(speed int) {
 	}
 }
 
-func (s *UDPSender) SendWithSpeedAndTime(speed int, t time.Duration) {
-	go func() {
-		time.Sleep(t)
-		s.Stop()
+func (s *UDPSender) SendWithSpeedAndTime(speed int, t time.Duration) int {
+	startTime := time.Now().UnixMilli()
+	byteCount := 0
+	var duration int64
+	// output in the end
+	defer func() {
+		s.byteCount += byteCount
+		durationMinutes := float64(duration) / 1000
+		fmt.Printf("byte count:%v, duration:%v s\n", byteCount, durationMinutes)
+		fmt.Printf("average speed: %v MB/s\n", float64(byteCount)/1024/1024/durationMinutes)
 	}()
-	s.SendWithSpeed(speed)
+
+	for {
+		select {
+		case <-s.stopSem:
+			return byteCount
+		default:
+			duration = time.Now().UnixMilli() - startTime
+			if int(duration)*speed*1024*1024/8/1000 > byteCount {
+				sz, err := s.WriteToUDP(s.rawData, s.addr)
+				if err != nil {
+					fmt.Println(err)
+					return byteCount
+				}
+				byteCount += sz
+			}
+			if duration > t.Milliseconds() {
+				return byteCount
+			}
+		}
+	}
 }
 
 // Send use the default speed to send

@@ -61,6 +61,17 @@ func (p *PacketTrainSender) Serve() {
 		switch message {
 		case "END":
 			return
+		case "STOP":
+			// stop this time
+			p.sender.Stop()
+			continue
+		case "USAGE":
+			usage := p.sender.ByteCount()
+			_, err := p.cli.Write([]byte(fmt.Sprintf("USAGE:%d", usage)))
+			if err != nil {
+				fmt.Println(err)
+			}
+			continue
 		default:
 			options := strings.Split(message, ",")
 			speed, err := strconv.Atoi(options[0])
@@ -75,13 +86,15 @@ func (p *PacketTrainSender) Serve() {
 				return
 			}
 			p.sendDuration = time.Duration(duration) * time.Millisecond
+			go func() {
+				byteCount := p.sender.SendWithSpeedAndTime(p.sendSpeed, p.sendDuration)
+				_, err = p.cli.Write([]byte(strconv.Itoa(byteCount)))
+				if err != nil {
+					fmt.Println(err)
+				}
+			}()
 		}
-		p.sender.SendWithSpeedAndTime(p.sendSpeed, p.sendDuration)
-		_, err = p.cli.Write([]byte(strconv.Itoa(p.sender.ByteCount())))
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+
 	}
 }
 
