@@ -3,6 +3,8 @@ import socket
 import threading
 import time
 import _thread
+import matplotlib.pyplot as plt
+import csv
 
 
 class Receiver(threading.Thread):
@@ -74,10 +76,10 @@ class PacketTrainClient:
         while self.send_speed <= 400:
             for i in range(3):
                 byte_count, time_cost = self.test_once()
-                #server_send = self.tcp_sock.recv(1024)
-                print("byte_count:",byte_count)
-                #print("server_send:",str(server_send))
-                #result[self.send_speed].append((time_cost, byte_count / int(server_send)))
+                # server_send = self.tcp_sock.recv(1024)
+                print("byte_count:", byte_count)
+                # print("server_send:",str(server_send))
+                # result[self.send_speed].append((time_cost, byte_count / int(server_send)))
                 time.sleep(time_cost)
             self.send_speed = self.send_speed * 2
         self.tcp_sock.send(b"END")
@@ -100,24 +102,115 @@ class PacketTrainClient:
         check(self.receiver)
         self.receiver.join()
         return self.receiver.byte_count, self.receiver.end_time - self.receiver.start_time
+
     def continue_send(self):
         message = "{},{};".format(self.send_speed, 5000)
         self.receiver = Receiver(self.udp_sock)
         self.receiver.start()
         self.tcp_sock.send(message.encode('utf-8'))
+
     def stop_send(self):
-        message="STOP;"
+        message = "STOP;"
         self.tcp_sock.send(message.encode('utf-8'))
         self.receiver.join()
-        print("receive:",self.receiver.byte_count)
+        print("receive:", self.receiver.byte_count)
+
     def get_usage(self):
         self.tcp_sock.send("USAGE;".encode('utf-8'))
         while True:
             massage = self.tcp_sock.recv(1024)
-            massage=massage.decode('utf-8')
-            print("message:",massage)
+            massage = massage.decode('utf-8')
+            print("message:", massage)
             if massage.startswith("USAGE:"):
                 return int(massage[6:])
+
+    # 以下为误饱和实验方法
+    def change_speed_test(self):
+        self.start_time = time.time()
+        self.connect()
+
+        k = []
+        speed = []
+
+        self.duration = 100
+
+        # 记录结果
+        with open('speed-k.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+
+            writer.writerow(['speed/Mbps'])
+
+            # speedtest基准带宽110
+            # speed从10到100，每组测50次
+            for s in range(10, 101):
+                self.send_speed = s
+                data = [s]
+                print("s = ", s)
+                for i in range(50):
+                    print(str(i + 1) + "/50")
+                    byte_count, time_cost = self.test_once()
+                    speed.append(s)
+                    # 如果丢包率过高，记k为0（无效值）
+                    if byte_count / 1024 / 1024 * 8 / (self.duration * s / 1000) < 0.8:
+                        k.append(0)
+                        data.append(0)
+                    else:
+                        data.append(time_cost * 10)
+                        k.append(time_cost * 10)
+                    time.sleep(time_cost)
+                writer.writerow(data)
+
+        self.tcp_sock.send(b"END")
+
+        plt.scatter(speed, k)
+        plt.title('speed-k')
+        plt.xlabel('speed')
+        plt.ylabel('k')
+        plt.show()
+
+    def change_sendtime_test(self):
+        self.start_time = time.time()
+        self.connect()
+
+        k = []
+        sendTime = []
+
+        # 记录结果
+        with open('duration-k.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+
+            writer.writerow(['time/ms'])
+
+            self.send_speed = 60
+
+            # 发送时间从50到1000，跨度为10，每组测50次
+            for s in range(600, 611, 10):
+                self.duration = s
+                data = [s]
+                print("duration = ", s)
+                for i in range(10):
+                    print(str(i + 1) + "/50")
+                    byte_count, time_cost = self.test_once()
+                    sendTime.append(s)
+                    # 如果丢包率过高，记k为0（无效值）
+                    if byte_count/1024/1024*8/(self.send_speed*s/1000) < 0.8:
+                        k.append(0)
+                        data.append(0)
+                    else:
+                        k.append(time_cost * 1000 / s)
+                        data.append(time_cost * 1000 / s)
+                    time.sleep(time_cost)
+                writer.writerow(data)
+
+        self.tcp_sock.send(b"END")
+
+        plt.scatter(sendTime, k)
+        plt.title('duration-k')
+        plt.xlabel('duration')
+        plt.ylabel('k')
+        plt.show()
+
+
 # old method
 def test_speed():
     start_time = time.time()
@@ -166,10 +259,11 @@ def test_speed():
 
 
 if __name__ == '__main__':
-    client = PacketTrainClient('127.0.0.1')
-    print(client.test_speed())
+    client = PacketTrainClient('81.70.55.189')
+    client.change_sendtime_test()
+    # print(client.test_speed())
     # client.connect()
     # client.continue_send()
     # time.sleep(3)
     # client.stop_send()
-    #print(client.get_usage())
+    # print(client.get_usage())
