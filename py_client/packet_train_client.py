@@ -210,6 +210,97 @@ class PacketTrainClient:
         plt.ylabel('k')
         plt.show()
 
+    # 多次发送避免误饱和实验
+    def multi_test(self, k, loop):
+        self.start_time = time.time()
+        self.connect()
+
+        # 设置duration
+        self.duration = 100
+
+        # 画图：speed为横轴，multi_saturated为纵轴
+        multi_speed = []
+        multi_saturated = []
+        single_speed = []
+        single_saturated = []
+
+        # 记录结果
+        with open('multi_test_'+str(loop)+'.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+
+            writer.writerow(['speed/Mbps'])
+
+            for s in range(120, 201):
+                self.send_speed = s
+                data = [s]
+                print("s = ", s)
+                # 跑多次
+                for i in range(loop):
+                    byte_count, time_cost = self.test_once()
+                    print(time_cost*1000)
+                    # 如果丢包率过高，记saturated为2（无效值）
+                    if byte_count / 1024 / 1024 * 8 / (self.duration * s / 1000) < 0.8:
+                        saturated = 2
+                    else:
+                        if time_cost * 1000 >= k * self.duration:
+                            saturated = 1
+                        else:
+                            saturated = 0
+                    print(str(s), ",", str(i+1), "/ 3 :", saturated)
+                    # 表
+                    data.append(saturated)
+                    # 单个散点
+                    single_speed.append(s)
+                    single_saturated.append(saturated)
+                    time.sleep(time_cost)
+                # multi散点
+                multi_speed.append(s)
+                # 有一个没跑满就认为没跑满
+                # 取出第二个到最后一个元素
+                sub_lst = data[1:]
+                # 如果有0，直接返回0
+                if 0 in sub_lst:
+                    multi_saturated.append(0)
+                # 如果都是2，返回2
+                elif all(x == 2 for x in sub_lst):
+                    multi_saturated.append(2)
+                # 如果列表中有1，且剩下的都是2，返回1
+                elif 1 in sub_lst:
+                    multi_saturated.append(1)
+                # 写表格
+                writer.writerow(data)
+
+        plt.subplot(121)
+        plt.scatter(single_speed, single_saturated)
+        plt.title('speed-saturated-single')
+        plt.xlabel('speed')
+        plt.ylabel('saturated')
+
+        plt.subplot(122)
+        plt.scatter(multi_speed, multi_saturated)
+        plt.title('speed-saturated-' + str(loop))
+        plt.xlabel('speed')
+        plt.ylabel('saturated')
+
+        plt.show()
+
+        self.tcp_sock.send(b"END")
+
+    # todo:应用多次发送的测速方法
+    def robust_test(self):
+        self.start_time = time.time()
+        self.connect()
+
+        # 初始速度 时间
+        self.send_speed = 100
+        self.duration = 100
+
+        # 开始测试
+        while 1:
+            byte_count, time_cost = self.test_once()
+            # 丢包率太大重测
+
+
 
 # old method
 def test_speed():
@@ -260,7 +351,7 @@ def test_speed():
 
 if __name__ == '__main__':
     client = PacketTrainClient('81.70.55.189')
-    client.change_sendtime_test()
+    client.multi_test(1.2, 3)
     # print(client.test_speed())
     # client.connect()
     # client.continue_send()
