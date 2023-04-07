@@ -13,8 +13,8 @@ class Receiver(threading.Thread):
         self.conn = conn
         self.byte_count = 0
         self.stopped = False
-        self.start_time = None
-        self.end_time = None
+        self.start_time = time.time()
+        self.end_time = time.time()
 
     def run(self) -> None:
         try:
@@ -32,7 +32,11 @@ class Receiver(threading.Thread):
 
 def check(receiver: Receiver):
     old_count = 0
+    start_time = time.time()
     while True:
+        if receiver.byte_count == 0 and time.time() - start_time > 1:
+            receiver.stopped = True
+            return
         if receiver.byte_count == old_count and receiver.byte_count != 0:
             receiver.stopped = True
             return
@@ -51,6 +55,20 @@ class PacketTrainClient:
         self.udp_sock = None
         self.send_speed = 100
         self.duration = 100
+        self.stop_trigger = False
+
+    def send_trigger(self):
+        while not self.stop_trigger:
+            print("Trigger")
+            for i in range(10):
+                if not self.stop_trigger:
+                    self.udp_sock.sendto(self.key.encode('utf-8'), (self.server_address, self.udp_port))
+                else:
+                    return
+            try:
+                time.sleep(0.05)
+            except:
+                return
 
     def connect(self):
         self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -60,9 +78,15 @@ class PacketTrainClient:
         time.sleep(0.1)
         self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udp_sock.settimeout(0.5)
-        self.udp_sock.sendto(self.key.encode('utf-8'), (self.server_address, self.udp_port))
+
+        # 打洞线程
+        self.stop_trigger = False
+        send_trigger = threading.Thread(target=self.send_trigger)
+        send_trigger.start()
+
         resp = self.tcp_sock.recv(1024)
         print("server response: {}".format(str(resp)))
+        self.stop_trigger = True
 
     def test_once_with_speed(self, speed):
         self.send_speed = speed
@@ -86,7 +110,7 @@ class PacketTrainClient:
         return result
 
     def test_once(self):
-        message = "{},{}".format(self.send_speed, self.duration)
+        message = "{},{};".format(self.send_speed, self.duration)
         # try:
         #     while True:
         #         data = self.udp_sock.recv(1024)
@@ -131,6 +155,7 @@ class PacketTrainClient:
 
         k = []
         speed = []
+        lost = []
 
         self.duration = 100
 
@@ -140,9 +165,7 @@ class PacketTrainClient:
 
             writer.writerow(['speed/Mbps'])
 
-            # speedtest基准带宽110
-            # speed从10到100，每组测50次
-            for s in range(10, 101):
+            for s in range(30, 201, 5):
                 self.send_speed = s
                 data = [s]
                 print("s = ", s)
@@ -157,7 +180,8 @@ class PacketTrainClient:
                     else:
                         data.append(time_cost * 10)
                         k.append(time_cost * 10)
-                    time.sleep(time_cost)
+
+                    time.sleep(1)
                 writer.writerow(data)
 
         self.tcp_sock.send(b"END")
@@ -193,7 +217,7 @@ class PacketTrainClient:
                     byte_count, time_cost = self.test_once()
                     sendTime.append(s)
                     # 如果丢包率过高，记k为0（无效值）
-                    if byte_count/1024/1024*8/(self.send_speed*s/1000) < 0.8:
+                    if byte_count / 1024 / 1024 * 8 / (self.send_speed * s / 1000) < 0.8:
                         k.append(0)
                         data.append(0)
                     else:
@@ -225,19 +249,19 @@ class PacketTrainClient:
         single_saturated = []
 
         # 记录结果
-        with open('multi_test_'+str(loop)+'.csv', 'w', newline='') as file:
+        with open('multi_test_' + str(loop) + '.csv', 'w', newline='') as file:
             writer = csv.writer(file)
 
             writer.writerow(['speed/Mbps'])
 
-            for s in range(120, 201):
+            for s in range(10, 151):
                 self.send_speed = s
                 data = [s]
                 print("s = ", s)
                 # 跑多次
                 for i in range(loop):
                     byte_count, time_cost = self.test_once()
-                    print(time_cost*1000)
+                    print(time_cost * 1000)
                     # 如果丢包率过高，记saturated为2（无效值）
                     if byte_count / 1024 / 1024 * 8 / (self.duration * s / 1000) < 0.8:
                         saturated = 2
@@ -246,7 +270,7 @@ class PacketTrainClient:
                             saturated = 1
                         else:
                             saturated = 0
-                    print(str(s), ",", str(i+1), "/ 3 :", saturated)
+                    print(str(s), ",", str(i + 1), "/ 3 :", saturated)
                     # 表
                     data.append(saturated)
                     # 单个散点
@@ -270,7 +294,6 @@ class PacketTrainClient:
                 # 写表格
                 writer.writerow(data)
 
-        plt.subplot(121)
         plt.scatter(single_speed, single_saturated)
         plt.title('speed-saturated-single')
         plt.xlabel('speed')
@@ -285,21 +308,6 @@ class PacketTrainClient:
         plt.show()
 
         self.tcp_sock.send(b"END")
-
-    # todo:应用多次发送的测速方法
-    def robust_test(self):
-        self.start_time = time.time()
-        self.connect()
-
-        # 初始速度 时间
-        self.send_speed = 100
-        self.duration = 100
-
-        # 开始测试
-        while 1:
-            byte_count, time_cost = self.test_once()
-            # 丢包率太大重测
-
 
 
 # old method
