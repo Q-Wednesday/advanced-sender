@@ -190,5 +190,6 @@ def saturated_data_process(file_path):
 
 
 if __name__ == '__main__':
-    test_saturated(1.2)
-    saturated_data_process('res/speed-saturated-CMCC_4G-1.2.csv')
+    # test_saturated(1.2)
+    # saturated_data_process('res/speed-saturated-CMCC_4G-1.2.csv')
+    loss_data_process('res/speed-loss-CMCC_4G.csv')
