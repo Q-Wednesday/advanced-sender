@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 每个条件下的循环次数
-loop = 5
+loop = 10
 
 
 # 调整发送速度，记录接收时间和丢包率
@@ -98,25 +98,24 @@ def loss_data_process(file_path):
     plt.show()
 
 
-# 调整发送速度和门槛k，记录接收时间和饱和判定结果
-def test_saturated(k):
+# 调整发送速度和门槛k，记录接收时间
+def test_saturated():
     client = PacketTrainClient('81.70.55.189')
 
     # 发送时间
     client.duration = 100
 
     # 记录数据
-    with open('res/speed-saturated-CMCC_4G-1.2.csv', 'w', newline='') as file:
+    with open('res/speed-saturated-CMCC_4G.csv', 'w', newline='') as file:
         writer = csv.writer(file)
         # 表头
         header = ['speed/Mbps']
         for i in range(1, loop + 1):
             header.append('r_time_' + str(i))
-            header.append('saturated_' + str(i))
         writer.writerow(header)
 
         # 调整发送速度开始实验
-        for s_speed in range(5, 11, 5):
+        for s_speed in range(1, 30):
             # 设置发送速度/Mbps
             client.send_speed = s_speed
             # 发送端发出数据量
@@ -136,9 +135,7 @@ def test_saturated(k):
                     # 如果发送速率达标，记录接收时间和饱和判断结果
                     if data_send >= s_speed * 1024 * 1024 / 8 * (client.duration / 1000):
                         packet_loss = 1 - byte_count / 1024 / 1024 * 8 / (s_speed * client.duration / 1000)
-                        saturated = time_cost > client.duration / 1000 * k
                         row_data.append(time_cost)
-                        row_data.append(saturated)
                     # 休息一会
                     time.sleep(1)
                 # 重置data_send
@@ -148,7 +145,7 @@ def test_saturated(k):
 
 
 # 处理饱和判定数据
-def saturated_data_process(file_path):
+def saturated_data_process(file_path, k):
     data = pd.read_csv(file_path)
     # print(data)
 
@@ -165,8 +162,7 @@ def saturated_data_process(file_path):
                 speed.extend(data[col_name].tolist())
         elif col_name.startswith('r_time'):
             r_time.extend(data[col_name].tolist())
-        elif col_name.startswith('saturated'):
-            saturated.extend(data[col_name].tolist())
+            saturated.extend(data[col_name].apply(lambda x: x >= 0.1 * k).tolist())
 
     print(len(speed))
     print(len(r_time))
@@ -190,6 +186,6 @@ def saturated_data_process(file_path):
 
 
 if __name__ == '__main__':
-    # test_saturated(1.2)
-    # saturated_data_process('res/speed-saturated-CMCC_4G-1.2.csv')
-    loss_data_process('res/speed-loss-CMCC_4G.csv')
+    test_saturated()
+    saturated_data_process('res/speed-saturated-CMCC_4G.csv', 1.5)
+    # loss_data_process('res/speed-saturated-CMCC_4G-1.2.csv')
