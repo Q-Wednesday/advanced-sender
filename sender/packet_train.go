@@ -5,6 +5,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -111,6 +112,8 @@ func (p *PacketTrainSender) handle(message string) bool {
 type UDPDispatcher struct {
 	activeSenders  map[string]*PacketTrainSender
 	pendingSenders map[string]*PacketTrainSender
+	activeM        sync.RWMutex
+	pendingM       sync.RWMutex
 }
 
 func NewUDPDispatcher() *UDPDispatcher {
@@ -134,20 +137,28 @@ func (u *UDPDispatcher) Dispatch(udpAddr *net.UDPAddr) {
 		}
 		key := string(buffer[:n])
 		fmt.Printf("key:%v addr:%v count%v\n", key, addr, n)
+		u.pendingM.Lock()
 		if sender, ok := u.pendingSenders[key]; ok {
 			sender.Connect(listen, addr)
 			delete(u.pendingSenders, key)
+			u.activeM.Lock()
 			u.activeSenders[key] = sender
+			u.activeM.Unlock()
 			go func() {
 				sender.Serve()
+				u.activeM.Lock()
 				delete(u.activeSenders, key)
+				u.activeM.Unlock()
 				fmt.Printf("end serving %v\n", key)
 			}()
 		}
+		u.pendingM.Unlock()
 	}
 }
 func (u *UDPDispatcher) AddSender(key string, conn *net.TCPConn, option ...PacketTrainSenderOption) {
+	u.pendingM.Lock()
 	u.pendingSenders[key] = NewPacketTrainSender(conn, option...)
+	u.pendingM.Unlock()
 }
 
 type PacketTrainServer struct {
